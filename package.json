@@ -1,0 +1,20 @@
+{
+  "name": "Uday_krishna-Portfolio",
+  "version": "1.0.0",
+  "description": "Jyothi Uday Krishna — Personal Portfolio + UdayAI Chatbot",
+  "private": true,
+  "scripts": {
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js",
+    "build": "echo 'Static site — no build step required'"
+  },
+  "dependencies": {
+    "@vercel/postgres": "^0.10.0",
+    "groq-sdk": "^0.7.0",
+    "jsonwebtoken": "^9.0.2",
+    "cookie": "^0.7.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login — Uday Portfolio</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="../css/styles.css" />
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px;
+      box-shadow: var(--shadow);
+    }
+    .login-card h1 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .login-card p { color: var(--text-2); font-size: 0.875rem; margin-bottom: 28px; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 8px; color: var(--text-2); }
+    input[type="password"] {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color var(--transition);
+      font-family: var(--font-body);
+    }
+    input[type="password"]:focus { border-color: var(--accent); }
+    .login-btn { margin-top: 20px; width: 100%; justify-content: center; }
+    #error-msg { display: none; color: #ef4444; font-size: 0.8rem; margin-top: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h1>Admin Login</h1>
+    <p>Enter your admin password to manage portfolio content.</p>
+    <form id="login-form">
+      <label for="password">Password</label>
+      <input id="password" type="password" name="password" autocomplete="current-password" required placeholder="Enter password" />
+      <button type="submit" class="btn btn-primary login-btn" id="login-btn">Login →</button>
+      <p id="error-msg"></p>
+    </form>
+  </div>
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      const errEl = document.getElementById('error-msg');
+      const pw = document.getElementById('password').value;
+      btn.textContent = 'Logging in…';
+      btn.disabled = true;
+      errEl.style.display = 'none';
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw }),
+          credentials: 'same-origin'
+        });
+        if (res.ok) {
+          window.location.href = '/admin/dashboard';
+        } else {
+          const d = await res.json();
+          errEl.textContent = d.error || 'Login failed';
+          errEl.style.display = 'block';
+        }
+      } catch {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+      }
+      btn.textContent = 'Login →';
+      btn.disabled = false;
+    });
+  </script>
+</body>
+</html>

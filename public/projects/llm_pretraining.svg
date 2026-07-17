@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-grad-llm" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020808" />
+      <stop offset="100%" stop-color="#050812" />
+    </linearGradient>
+    <linearGradient id="curve-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <radialGradient id="radial-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.12" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="250" fill="url(#bg-grad-llm)" rx="8" />
+  <rect width="400" height="250" fill="url(#radial-glow)" rx="8" />
+
+  <!-- Graph Coordinate Grid -->
+  <g opacity="0.08" stroke="#ffffff" stroke-width="0.5">
+    <!-- Horizontal lines -->
+    <line x1="40" y1="50" x2="360" y2="50" />
+    <line x1="40" y1="90" x2="360" y2="90" />
+    <line x1="40" y1="130" x2="360" y2="130" />
+    <line x1="40" y1="170" x2="360" y2="170" />
+    <line x1="40" y1="210" x2="360" y2="210" />
+    <!-- Vertical lines -->
+    <line x1="80" y1="50" x2="80" y2="210" />
+    <line x1="120" y1="50" x2="120" y2="210" />
+    <line x1="160" y1="50" x2="160" y2="210" />
+    <line x1="200" y1="50" x2="200" y2="210" />
+    <line x1="240" y1="50" x2="240" y2="210" />
+    <line x1="280" y1="50" x2="280" y2="210" />
+    <line x1="320" y1="50" x2="320" y2="210" />
+  </g>
+
+  <!-- Coordinate Axes -->
+  <g stroke="#374151" stroke-width="1.5" opacity="0.6">
+    <line x1="40" y1="210" x2="360" y2="210" /> <!-- X Axis -->
+    <line x1="40" y1="40" x2="40" y2="210" /> <!-- Y Axis -->
+  </g>
+
+  <!-- Graph Axis Labels -->
+  <text x="35" y="45" font-family="monospace" font-size="8" fill="#9ca3af" text-anchor="end">LOSS</text>
+  <text x="360" y="222" font-family="monospace" font-size="8" fill="#9ca3af" text-anchor="middle">EPOCH</text>
+
+  <!-- Loss Curve (Decaying Exponential Graph) -->
+  <path d="M 40,65 Q 110,80 160,140 T 260,185 T 360,195" fill="none" stroke="url(#curve-grad)" stroke-width="3" filter="url(#glow)" />
+  <path d="M 40,65 Q 110,80 160,140 T 260,185 T 360,195" fill="none" stroke="#ffffff" stroke-width="0.75" opacity="0.8" />
+
+  <!-- Layer Neural nodes (Abstract weights representation) -->
+  <g transform="translate(180, 50)" opacity="0.8">
+    <rect x="0" y="0" width="160" height="70" rx="4" fill="#091414" stroke="#047857" stroke-width="1" />
+    <!-- Small node columns -->
+    <circle cx="20" cy="20" r="4" fill="#10b981" />
+    <circle cx="20" cy="35" r="4" fill="#059669" />
+    <circle cx="20" cy="50" r="4" fill="#10b981" />
+
+    <circle cx="50" cy="15" r="3" fill="#06b6d4" />
+    <circle cx="50" cy="28" r="3" fill="#0891b2" />
+    <circle cx="50" cy="42" r="3" fill="#06b6d4" />
+    <circle cx="50" cy="55" r="3" fill="#0891b2" />
+
+    <circle cx="80" cy="20" r="4" fill="#10b981" />
+    <circle cx="80" cy="35" r="4" fill="#10b981" />
+    <circle cx="80" cy="50" r="4" fill="#059669" />
+
+    <!-- Weights Links -->
+    <line x1="24" y1="20" x2="47" y2="15" stroke="#374151" stroke-width="0.5" />
+    <line x1="24" y1="20" x2="47" y2="28" stroke="#374151" stroke-width="0.5" />
+    <line x1="24" y1="35" x2="47" y2="28" stroke="#10b981" stroke-width="0.5" opacity="0.5" />
+    <line x1="24" y1="35" x2="47" y2="42" stroke="#374151" stroke-width="0.5" />
+    <line x1="24" y1="50" x2="47" y2="42" stroke="#374151" stroke-width="0.5" />
+    <line x1="24" y1="50" x2="47" y2="55" stroke="#374151" stroke-width="0.5" />
+
+    <line x1="53" y1="15" x2="76" y2="20" stroke="#374151" stroke-width="0.5" />
+    <line x1="53" y1="28" x2="76" y2="20" stroke="#374151" stroke-width="0.5" />
+    <line x1="53" y1="28" x2="76" y2="35" stroke="#06b6d4" stroke-width="0.5" opacity="0.5" />
+    <line x1="53" y1="42" x2="76" y2="35" stroke="#374151" stroke-width="0.5" />
+    <line x1="53" y1="42" x2="76" y2="50" stroke="#374151" stroke-width="0.5" />
+    <line x1="53" y1="55" x2="76" y2="50" stroke="#374151" stroke-width="0.5" />
+
+    <text x="150" y="40" font-family="monospace" font-size="8" fill="#10b981" text-anchor="end">LoRA PEFT</text>
+  </g>
+
+  <!-- Technical Overlay Telemetry -->
+  <text x="15" y="25" font-family="monospace" font-size="8" fill="#10b981" opacity="0.7">MODEL: LLAMA-3-8B-DACP</text>
+  <text x="385" y="25" font-family="monospace" font-size="8" fill="#06b6d4" opacity="0.7" text-anchor="end">VAL_PERPLEXITY: 8.42</text>
+  <text x="385" y="235" font-family="monospace" font-size="8" fill="#ffffff" opacity="0.4" text-anchor="end">MEMORY SAVED: 40%</text>
+</svg>

@@ -1,132 +1,214 @@
 // /api/_utils/db.js
-// Database connection helper using Vercel Postgres
+// Markdown Database interface mimicking the SQL connection layer.
+// All queries resolve directly to profile.md instead of Postgres or SQLite.
 
-let sql;
-if (process.env.POSTGRES_URL || process.env.DATABASE_URL) {
-  sql = require('@vercel/postgres').sql;
-} else {
-  sql = require('./sqlite-mock').sql;
+const { readMarkdownDb, writeMarkdownDb } = require('./markdown-db');
+
+// In-memory cache to accumulate inserts during bulk delete-insert operations
+let memoryDb = null;
+
+function getDb() {
+  if (!memoryDb) {
+    memoryDb = readMarkdownDb();
+  }
+  return memoryDb;
+}
+
+function saveDb() {
+  if (memoryDb) {
+    writeMarkdownDb(memoryDb);
+  }
 }
 
 /**
- * Ensures all five tables exist in the database.
- * Called before any read/write to guarantee schema is present.
+ * Ensures schema check (noop for markdown-db).
  */
 async function ensureSchema() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS profile (
-      id INTEGER PRIMARY KEY DEFAULT 1,
-      name TEXT NOT NULL DEFAULT '',
-      title TEXT NOT NULL DEFAULT '',
-      location TEXT NOT NULL DEFAULT '',
-      email TEXT NOT NULL DEFAULT '',
-      linkedin_url TEXT NOT NULL DEFAULT '',
-      github_url TEXT NOT NULL DEFAULT '',
-      bio TEXT NOT NULL DEFAULT '',
-      photo_url TEXT NOT NULL DEFAULT '/uday.jpg',
-      resume_url TEXT NOT NULL DEFAULT '/Jyothi_Uday_Krishna_One_Page_Resume.pdf',
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS experience (
-      id SERIAL PRIMARY KEY,
-      company TEXT NOT NULL DEFAULT '',
-      role TEXT NOT NULL DEFAULT '',
-      start_date TEXT NOT NULL DEFAULT '',
-      end_date TEXT NOT NULL DEFAULT '',
-      is_current BOOLEAN NOT NULL DEFAULT FALSE,
-      bullets JSONB NOT NULL DEFAULT '[]',
-      sort_order INTEGER NOT NULL DEFAULT 0
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS projects (
-      id SERIAL PRIMARY KEY,
-      title TEXT NOT NULL DEFAULT '',
-      domain TEXT NOT NULL DEFAULT '',
-      summary TEXT NOT NULL DEFAULT '',
-      details TEXT NOT NULL DEFAULT '',
-      tech JSONB NOT NULL DEFAULT '[]',
-      thumbnail_url TEXT NOT NULL DEFAULT '/projects/placeholder.png',
-      project_link TEXT,
-      video_link TEXT,
-      sort_order INTEGER NOT NULL DEFAULT 0
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS skills (
-      id SERIAL PRIMARY KEY,
-      category TEXT NOT NULL DEFAULT '',
-      items JSONB NOT NULL DEFAULT '[]',
-      sort_order INTEGER NOT NULL DEFAULT 0
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS faq (
-      id SERIAL PRIMARY KEY,
-      question TEXT NOT NULL DEFAULT '',
-      answer TEXT NOT NULL DEFAULT '',
-      sort_order INTEGER NOT NULL DEFAULT 0
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS certifications (
-      id SERIAL PRIMARY KEY,
-      title TEXT NOT NULL DEFAULT '',
-      issuer TEXT NOT NULL DEFAULT '',
-      issue_date TEXT NOT NULL DEFAULT '',
-      credential_id TEXT NOT NULL DEFAULT '',
-      credential_url TEXT NOT NULL DEFAULT '',
-      sort_order INTEGER NOT NULL DEFAULT 0
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS resume_files (
-      id SERIAL PRIMARY KEY,
-      filename TEXT NOT NULL DEFAULT '',
-      file_data TEXT NOT NULL DEFAULT '',
-      parsed_content TEXT NOT NULL DEFAULT '',
-      version_label TEXT NOT NULL DEFAULT '1.0',
-      uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      is_active BOOLEAN NOT NULL DEFAULT TRUE
-    )
-  `;
+  getDb(); // verify we can read/parse profile.md
 }
 
 /**
- * Checks if the profile table has a row with id = 1.
- * @returns {boolean}
+ * Checks if the profile has been loaded.
  */
 async function isSeeded() {
-  const result = await sql`SELECT id FROM profile WHERE id = 1 LIMIT 1`;
-  return result.rows.length > 0;
+  const db = getDb();
+  return !!db.profile.name;
 }
 
 /**
- * Fetches all public content for the portfolio page.
- * @returns {object} Full content payload
+ * Returns all public content parsed from profile.md.
  */
 async function getAllContent() {
-  const [profileRes, expRes, projRes, skillsRes, faqRes, certsRes, resumeRes] = await Promise.all([
-    sql`SELECT * FROM profile WHERE id = 1`,
-    sql`SELECT * FROM experience ORDER BY sort_order ASC`,
-    sql`SELECT * FROM projects ORDER BY sort_order ASC`,
-    sql`SELECT * FROM skills ORDER BY sort_order ASC`,
-    sql`SELECT * FROM faq ORDER BY sort_order ASC`,
-    sql`SELECT * FROM certifications ORDER BY sort_order ASC`,
-    sql`SELECT * FROM resume_files WHERE is_active = TRUE ORDER BY id DESC LIMIT 1`,
-  ]);
-
+  const db = getDb();
   return {
-    profile: profileRes.rows[0] || null,
-    experience: expRes.rows,
-    projects: projRes.rows,
-    skills: skillsRes.rows,
-    faq: faqRes.rows,
-    certifications: certsRes.rows,
-    resume_file: resumeRes.rows[0] || null,
+    profile: db.profile,
+    experience: db.experience,
+    projects: db.projects,
+    skills: db.skills,
+    faq: db.faq,
+    certifications: db.certifications,
+    resume_file: db.resume_file
   };
+}
+
+/**
+ * Mock SQL query parser mapping relational commands to markdown read/writes.
+ */
+async function sql(strings, ...values) {
+  const query = strings.join('?').trim();
+  const db = getDb();
+
+  // --- READ QUERIES (SELECT) ---
+  if (query.toUpperCase().startsWith('SELECT')) {
+    const tableMatch = query.match(/FROM\s+(\w+)/i);
+    const table = tableMatch ? tableMatch[1].toLowerCase() : '';
+
+    if (table === 'profile') {
+      return { rows: [db.profile], rowCount: 1 };
+    }
+    if (table === 'experience') {
+      return { rows: db.experience, rowCount: db.experience.length };
+    }
+    if (table === 'projects') {
+      return { rows: db.projects, rowCount: db.projects.length };
+    }
+    if (table === 'skills') {
+      return { rows: db.skills, rowCount: db.skills.length };
+    }
+    if (table === 'faq') {
+      return { rows: db.faq, rowCount: db.faq.length };
+    }
+    if (table === 'certifications') {
+      return { rows: db.certifications, rowCount: db.certifications.length };
+    }
+    if (table === 'resume_files') {
+      return { rows: [db.resume_file], rowCount: 1 };
+    }
+
+    return { rows: [], rowCount: 0 };
+  }
+
+  // --- DELETE QUERIES (Wiping tables for save requests) ---
+  if (query.toUpperCase().startsWith('DELETE FROM')) {
+    const tableMatch = query.match(/DELETE\s+FROM\s+(\w+)/i);
+    const table = tableMatch ? tableMatch[1].toLowerCase() : '';
+
+    if (table === 'experience') db.experience = [];
+    else if (table === 'projects') db.projects = [];
+    else if (table === 'skills') db.skills = [];
+    else if (table === 'faq') db.faq = [];
+    else if (table === 'certifications') db.certifications = [];
+
+    saveDb();
+    return { rows: [], rowCount: 0 };
+  }
+
+  // --- UPDATE QUERIES (Profile or Resume status) ---
+  if (query.toUpperCase().startsWith('UPDATE')) {
+    if (query.toLowerCase().includes('update profile')) {
+      // Binding: [name, title, location, email, linkedin, github, bio, photo, resume]
+      db.profile.name = values[0];
+      db.profile.title = values[1];
+      db.profile.location = values[2];
+      db.profile.email = values[3];
+      db.profile.linkedin_url = values[4];
+      db.profile.github_url = values[5];
+      db.profile.bio = values[6];
+      db.profile.photo_url = values[7];
+      db.profile.resume_url = values[8];
+    } else if (query.toLowerCase().includes('update resume_files')) {
+      db.resume_file.is_active = 0;
+    }
+
+    saveDb();
+    return { rows: [], rowCount: 0 };
+  }
+
+  // --- INSERT QUERIES ---
+  if (query.toUpperCase().startsWith('INSERT INTO')) {
+    const tableMatch = query.match(/INSERT\s+INTO\s+(\w+)/i);
+    const table = tableMatch ? tableMatch[1].toLowerCase() : '';
+
+    if (table === 'experience') {
+      // Binding: [company, role, start_date, end_date, is_current, bullets, sort_order]
+      db.experience.push({
+        id: db.experience.length + 1,
+        company: values[0],
+        role: values[1],
+        start_date: values[2],
+        end_date: values[3],
+        is_current: values[4] ? 1 : 0,
+        bullets: typeof values[5] === 'string' ? JSON.parse(values[5]) : values[5],
+        sort_order: values[6]
+      });
+    }
+
+    else if (table === 'projects') {
+      // Binding: [title, domain, summary, details, tech, thumbnail, project_link, video_link, sort_order]
+      db.projects.push({
+        id: db.projects.length + 1,
+        title: values[0],
+        domain: values[1],
+        summary: values[2],
+        details: values[3],
+        tech: typeof values[4] === 'string' ? JSON.parse(values[4]) : values[4],
+        thumbnail_url: values[5] || 'projects/placeholder.png',
+        project_link: values[6] || '',
+        video_link: values[7] || null,
+        sort_order: values[8]
+      });
+    }
+
+    else if (table === 'skills') {
+      // Binding: [category, items, sort_order]
+      db.skills.push({
+        id: db.skills.length + 1,
+        category: values[0],
+        items: typeof values[1] === 'string' ? JSON.parse(values[1]) : values[1],
+        sort_order: values[2]
+      });
+    }
+
+    else if (table === 'certifications') {
+      // Binding: [title, issuer, issue_date, credential_id, credential_url, sort_order]
+      db.certifications.push({
+        id: db.certifications.length + 1,
+        title: values[0],
+        issuer: values[1],
+        issue_date: values[2] || '',
+        credential_id: values[3] || '',
+        credential_url: values[4] || '',
+        sort_order: values[5]
+      });
+    }
+
+    else if (table === 'faq') {
+      // Binding: [question, answer, sort_order]
+      db.faq.push({
+        id: db.faq.length + 1,
+        question: values[0],
+        answer: values[1],
+        sort_order: values[2]
+      });
+    }
+
+    else if (table === 'resume_files') {
+      // Binding: [filename, file_data, parsed_content, version_label, is_active]
+      db.resume_file = {
+        id: 1,
+        filename: values[0],
+        file_data: values[1],
+        parsed_content: values[2] || '',
+        version_label: values[3] || '1.0',
+        is_active: 1
+      };
+    }
+
+    saveDb();
+    return { rows: [], rowCount: 1 };
+  }
+
+  return { rows: [], rowCount: 0 };
 }
 
 module.exports = { sql, ensureSchema, isSeeded, getAllContent };

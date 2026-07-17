@@ -209,6 +209,21 @@ async function seedFromProfile() {
     ON CONFLICT (id) DO NOTHING
   `;
 
+  // Sync Postgres sequences if running in production to avoid auto-increment collisions
+  if (process.env.POSTGRES_URL || process.env.DATABASE_URL) {
+    try {
+      await sql`SELECT setval(pg_get_serial_sequence('experience', 'id'), COALESCE(MAX(id), 1)) FROM experience`;
+      await sql`SELECT setval(pg_get_serial_sequence('projects', 'id'), COALESCE(MAX(id), 1)) FROM projects`;
+      await sql`SELECT setval(pg_get_serial_sequence('skills', 'id'), COALESCE(MAX(id), 1)) FROM skills`;
+      await sql`SELECT setval(pg_get_serial_sequence('faq', 'id'), COALESCE(MAX(id), 1)) FROM faq`;
+      await sql`SELECT setval(pg_get_serial_sequence('certifications', 'id'), COALESCE(MAX(id), 1)) FROM certifications`;
+      await sql`SELECT setval(pg_get_serial_sequence('resume_files', 'id'), COALESCE(MAX(id), 1)) FROM resume_files`;
+      console.log('[seed] Postgres sequence sync complete.');
+    } catch (e) {
+      console.warn('[seed] Warning: could not sync sequences:', e.message);
+    }
+  }
+
   console.log('[seed] Seeding complete.');
 }
 
